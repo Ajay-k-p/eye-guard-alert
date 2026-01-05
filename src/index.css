@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 8%;
+    --foreground: 200 20% 95%;
+
+    --card: 220 18% 12%;
+    --card-foreground: 200 20% 95%;
+
+    --popover: 220 18% 12%;
+    --popover-foreground: 200 20% 95%;
+
+    --primary: 185 80% 50%;
+    --primary-foreground: 220 20% 8%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 200 20% 90%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 200 10% 55%;
+
+    --accent: 185 70% 45%;
+    --accent-foreground: 220 20% 8%;
+
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 70% 45%;
+    --success-foreground: 145 80% 10%;
+
+    --warning: 45 95% 55%;
+    --warning-foreground: 45 90% 10%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 185 80% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom design tokens */
+    --glow-primary: 0 0 30px hsl(185 80% 50% / 0.4);
+    --glow-success: 0 0 30px hsl(145 70% 45% / 0.4);
+    --glow-danger: 0 0 40px hsl(0 85% 55% / 0.5);
+    
+    --gradient-dark: linear-gradient(180deg, hsl(220 20% 10%) 0%, hsl(220 20% 6%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(220 18% 14%) 0%, hsl(220 18% 10%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 85% 55%) 0%, hsl(0 75% 40%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(145 70% 45%) 0%, hsl(145 60% 35%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(185 80% 50%) 0%, hsl(185 70% 40%) 100%);
+
+    --font-display: 'Orbitron', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 200 20% 95%;
+    --sidebar-primary: 185 80% 50%;
+    --sidebar-primary-foreground: 220 20% 8%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 200 20% 90%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 185 80% 50%;
+  }
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 200 20% 95%;
+    --card: 220 18% 12%;
+    --card-foreground: 200 20% 95%;
+    --popover: 220 18% 12%;
+    --popover-foreground: 200 20% 95%;
+    --primary: 185 80% 50%;
+    --primary-foreground: 220 20% 8%;
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 200 20% 90%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 200 10% 55%;
+    --accent: 185 70% 45%;
+    --accent-foreground: 220 20% 8%;
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 20%;
+    --input: 220 15% 18%;
+    --ring: 185 80% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    background: var(--gradient-dark);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .status-indicator {
+    @apply relative flex items-center justify-center;
+  }
+
+  .status-indicator::before {
+    content: '';
+    @apply absolute inset-0 rounded-full animate-ping opacity-30;
+  }
+
+  .status-open::before {
+    @apply bg-success;
+  }
+
+  .status-closed::before {
+    @apply bg-destructive;
+  }
+
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-success {
+    box-shadow: var(--glow-success);
+  }
+
+  .glow-danger {
+    box-shadow: var(--glow-danger);
+    animation: pulse-danger 1s ease-in-out infinite;
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    background: var(--gradient-card);
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .video-container {
+    @apply relative overflow-hidden rounded-2xl;
+    box-shadow: 0 0 60px hsl(220 20% 0% / 0.5),
+                inset 0 1px 0 hsl(200 20% 95% / 0.05);
+  }
+
+  .control-panel {
+    @apply glass-card rounded-2xl p-6;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(0 85% 55% / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px hsl(0 85% 55% / 0.6);
+  }
+}
+
+@keyframes scanner {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.scanner-line {
+  animation: scanner 2s ease-in-out infinite;
+}
