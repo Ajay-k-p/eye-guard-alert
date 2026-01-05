@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { FaceMesh, Results } from '@mediapipe/face_mesh';
-import { Camera } from '@mediapipe/camera_utils';
-import { calculateAverageEAR, areEyesClosed } from '@/utils/eyeAspectRatio';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Camera } from "@mediapipe/camera_utils";
+import { calculateAverageEAR, areEyesClosed } from "@/utils/eyeAspectRatio";
+
+/* -------------------- TYPES -------------------- */
 
 interface FaceDetectionState {
   isLoading: boolean;
@@ -21,6 +22,16 @@ interface UseFaceDetectionProps {
   isEnabled: boolean;
 }
 
+/* -------------------- GLOBAL CDN TYPE -------------------- */
+
+declare global {
+  interface Window {
+    FaceMesh: any;
+  }
+}
+
+/* -------------------- HOOK -------------------- */
+
 export function useFaceDetection({
   videoRef,
   canvasRef,
@@ -38,85 +49,105 @@ export function useFaceDetection({
     landmarks: null,
   });
 
-  const faceMeshRef = useRef<FaceMesh | null>(null);
+  const faceMeshRef = useRef<any>(null);
   const cameraRef = useRef<Camera | null>(null);
   const earThresholdRef = useRef(earThreshold);
 
-  // Update threshold ref when it changes
+  /* -------------------- KEEP THRESHOLD UPDATED -------------------- */
+
   useEffect(() => {
     earThresholdRef.current = earThreshold;
   }, [earThreshold]);
 
-  const onResults = useCallback((results: Results) => {
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!canvas || !video) return;
+  /* -------------------- RESULTS CALLBACK -------------------- */
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const onResults = useCallback(
+    (results: any) => {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video) return;
 
-    // Set canvas dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    // Draw video frame
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-      const landmarks = results.multiFaceLandmarks[0];
-      
-      // Calculate EAR
-      const { leftEAR, rightEAR, averageEAR } = calculateAverageEAR(landmarks);
-      const closed = areEyesClosed(averageEAR, earThresholdRef.current);
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Draw face mesh
-      drawFaceMesh(ctx, landmarks, canvas.width, canvas.height, closed);
+      if (results.multiFaceLandmarks?.length) {
+        const landmarks = results.multiFaceLandmarks[0];
 
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        eyesClosed: closed,
-        leftEAR,
-        rightEAR,
-        averageEAR,
-        faceDetected: true,
-        landmarks: landmarks as any,
-      }));
-    } else {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        faceDetected: false,
-        eyesClosed: false,
-        landmarks: null,
-      }));
-    }
+        const { leftEAR, rightEAR, averageEAR } =
+          calculateAverageEAR(landmarks);
 
-    ctx.restore();
-  }, [canvasRef, videoRef]);
+        const closed = areEyesClosed(
+          averageEAR,
+          earThresholdRef.current
+        );
+
+        drawFaceMesh(
+          ctx,
+          landmarks,
+          canvas.width,
+          canvas.height,
+          closed
+        );
+
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          eyesClosed: closed,
+          leftEAR,
+          rightEAR,
+          averageEAR,
+          faceDetected: true,
+          landmarks,
+        }));
+      } else {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          faceDetected: false,
+          eyesClosed: false,
+          landmarks: null,
+        }));
+      }
+
+      ctx.restore();
+    },
+    [canvasRef, videoRef]
+  );
+
+  /* -------------------- INIT MEDIAPIPE -------------------- */
 
   useEffect(() => {
     if (!isEnabled) {
-      if (cameraRef.current) {
-        cameraRef.current.stop();
-      }
+      cameraRef.current?.stop();
       return;
     }
 
     const video = videoRef.current;
     if (!video) return;
 
-    const initFaceMesh = async () => {
+    const init = async () => {
       try {
         setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        // Initialize FaceMesh
-        faceMeshRef.current = new FaceMesh({
-          locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-          },
+        /* 🔴 LOAD FaceMesh FROM CDN (CRITICAL FIX) */
+        await import(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"
+        );
+
+        if (!window.FaceMesh) {
+          throw new Error("FaceMesh failed to load");
+        }
+
+        faceMeshRef.current = new window.FaceMesh({
+          locateFile: (file: string) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
         });
 
         faceMeshRef.current.setOptions({
@@ -128,44 +159,42 @@ export function useFaceDetection({
 
         faceMeshRef.current.onResults(onResults);
 
-        // Initialize camera
         cameraRef.current = new Camera(video, {
           onFrame: async () => {
-            if (faceMeshRef.current) {
+            if (faceMeshRef.current && video) {
               await faceMeshRef.current.send({ image: video });
             }
           },
           width: 640,
           height: 480,
-          facingMode: 'user',
+          facingMode: "user",
         });
 
         await cameraRef.current.start();
+
         setState((prev) => ({ ...prev, isLoading: false }));
-      } catch (error) {
-        console.error('Error initializing face detection:', error);
+      } catch (err: any) {
+        console.error("FaceMesh init error:", err);
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Failed to initialize camera',
+          error: err?.message || "Camera initialization failed",
         }));
       }
     };
 
-    initFaceMesh();
+    init();
 
     return () => {
-      if (cameraRef.current) {
-        cameraRef.current.stop();
-      }
-      if (faceMeshRef.current) {
-        faceMeshRef.current.close();
-      }
+      cameraRef.current?.stop();
+      faceMeshRef.current?.close?.();
     };
-  }, [videoRef, isEnabled, onResults]);
+  }, [isEnabled, onResults, videoRef]);
 
   return state;
 }
+
+/* -------------------- DRAWING -------------------- */
 
 function drawFaceMesh(
   ctx: CanvasRenderingContext2D,
@@ -174,61 +203,32 @@ function drawFaceMesh(
   height: number,
   eyesClosed: boolean
 ) {
-  // Draw eye contours
   const leftEyeIndices = [33, 160, 158, 133, 153, 144, 163, 7, 246, 161, 159, 157, 173];
   const rightEyeIndices = [362, 385, 387, 263, 373, 380, 390, 249, 466, 388, 386, 384, 398];
 
-  const eyeColor = eyesClosed ? 'rgba(255, 70, 70, 0.9)' : 'rgba(0, 255, 200, 0.9)';
-  const glowColor = eyesClosed ? 'rgba(255, 70, 70, 0.4)' : 'rgba(0, 255, 200, 0.4)';
+  const eyeColor = eyesClosed
+    ? "rgba(255,70,70,0.9)"
+    : "rgba(0,255,200,0.9)";
+  const glowColor = eyesClosed
+    ? "rgba(255,70,70,0.4)"
+    : "rgba(0,255,200,0.4)";
 
-  // Draw glow effect
   ctx.shadowBlur = 15;
   ctx.shadowColor = glowColor;
-
-  // Draw left eye
-  ctx.beginPath();
   ctx.strokeStyle = eyeColor;
   ctx.lineWidth = 2;
-  leftEyeIndices.forEach((index, i) => {
-    const point = landmarks[index];
-    const x = point.x * width;
-    const y = point.y * height;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.stroke();
 
-  // Draw right eye
-  ctx.beginPath();
-  rightEyeIndices.forEach((index, i) => {
-    const point = landmarks[index];
-    const x = point.x * width;
-    const y = point.y * height;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  [leftEyeIndices, rightEyeIndices].forEach((eye) => {
+    ctx.beginPath();
+    eye.forEach((idx, i) => {
+      const p = landmarks[idx];
+      const x = p.x * width;
+      const y = p.y * height;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.stroke();
   });
-  ctx.closePath();
-  ctx.stroke();
-
-  // Draw face oval with subtle effect
-  ctx.shadowBlur = 5;
-  ctx.shadowColor = 'rgba(0, 200, 255, 0.2)';
-  ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
-  ctx.lineWidth = 1;
-
-  const faceOval = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
-  
-  ctx.beginPath();
-  faceOval.forEach((index, i) => {
-    const point = landmarks[index];
-    const x = point.x * width;
-    const y = point.y * height;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.stroke();
 
   ctx.shadowBlur = 0;
 }
