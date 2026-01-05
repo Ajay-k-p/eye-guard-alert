@@ -9,6 +9,7 @@ interface CameraViewProps {
   faceDetected: boolean;
   eyesClosed: boolean;
   isEnabled: boolean;
+  onEnableCamera: () => void;
 }
 
 export function CameraView({
@@ -79,11 +80,17 @@ export function CameraView({
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
             <Camera className="w-16 h-16 text-muted-foreground mb-4" />
             <p className="font-display text-lg tracking-wider text-muted-foreground">
-              DETECTION PAUSED
+              CAMERA DISABLED
             </p>
-            <p className="text-sm text-muted-foreground/70 mt-2">
-              Enable detection to start monitoring
+            <p className="text-sm text-muted-foreground/70 mt-2 mb-4">
+              Click below to enable camera access
             </p>
+            <button
+              onClick={onEnableCamera}
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Enable Camera
+            </button>
           </div>
         )}
 

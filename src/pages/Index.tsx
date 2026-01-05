@@ -13,7 +13,7 @@ const Index = () => {
   const [earThreshold, setEarThreshold] = useState(0.2);
   const [timeThreshold, setTimeThreshold] = useState(2);
   const [alarmEnabled, setAlarmEnabled] = useState(true);
-  const [isDetectionEnabled, setIsDetectionEnabled] = useState(true);
+  const [isDetectionEnabled, setIsDetectionEnabled] = useState(false);
 
   // Timer and stats state
   const [closureStartTime, setClosureStartTime] = useState<number | null>(null);
@@ -26,6 +26,10 @@ const Index = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   const { startAlarm, stopAlarm, testAlarm, isPlaying: isAlarmPlaying, isUnlocked } = useAlarm();
+
+  const handleEnableCamera = () => {
+    setIsDetectionEnabled(true);
+  };
 
   // Face detection
   const {
