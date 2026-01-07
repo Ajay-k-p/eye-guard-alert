@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Camera } from "@mediapipe/camera_utils";
+
 import { calculateAverageEAR, areEyesClosed } from "@/utils/eyeAspectRatio";
 
 /* -------------------- TYPES -------------------- */
@@ -50,7 +50,8 @@ export function useFaceDetection({
   });
 
   const faceMeshRef = useRef<any>(null);
-  const cameraRef = useRef<Camera | null>(null);
+  const cameraRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const earThresholdRef = useRef(earThreshold);
 
   /* -------------------- KEEP THRESHOLD UPDATED -------------------- */
@@ -136,16 +137,7 @@ export function useFaceDetection({
       try {
         setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        /* 🔴 LOAD FaceMesh FROM CDN (CRITICAL FIX) */
-        await import(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"
-        );
-
-        if (!window.FaceMesh) {
-          throw new Error("FaceMesh failed to load");
-        }
-
-        faceMeshRef.current = new window.FaceMesh({
+        faceMeshRef.current = new FaceMesh({
           locateFile: (file: string) =>
             `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
         });
@@ -159,18 +151,24 @@ export function useFaceDetection({
 
         faceMeshRef.current.onResults(onResults);
 
-        cameraRef.current = new Camera(video, {
-          onFrame: async () => {
-            if (faceMeshRef.current && video) {
-              await faceMeshRef.current.send({ image: video });
-            }
-          },
-          width: 640,
-          height: 480,
-          facingMode: "user",
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+        });
+        video.srcObject = stream;
+        cameraRef.current = stream;
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = resolve;
         });
 
-        await cameraRef.current.start();
+        const processFrame = async () => {
+          if (faceMeshRef.current && video) {
+            await faceMeshRef.current.send({ image: video });
+          }
+          animationFrameRef.current = requestAnimationFrame(processFrame);
+        };
+
+        processFrame();
 
         setState((prev) => ({ ...prev, isLoading: false }));
       } catch (err: any) {
@@ -186,7 +184,12 @@ export function useFaceDetection({
     init();
 
     return () => {
-      cameraRef.current?.stop();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (cameraRef.current) {
+        cameraRef.current.getTracks().forEach((track) => track.stop());
+      }
       faceMeshRef.current?.close?.();
     };
   }, [isEnabled, onResults, videoRef]);
