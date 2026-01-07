@@ -122,67 +122,77 @@ export function useFaceDetection({
     [canvasRef, videoRef]
   );
 
+  /* -------------------- START CAMERA FUNCTION -------------------- */
+
+  const startCamera = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      faceMeshRef.current = new FaceMesh({
+        locateFile: (file: string) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+      });
+
+      faceMeshRef.current.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      faceMeshRef.current.onResults(onResults);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: "user" },
+      });
+      video.srcObject = stream;
+      cameraRef.current = stream;
+
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
+
+      const processFrame = async () => {
+        if (faceMeshRef.current && video) {
+          await faceMeshRef.current.send({ image: video });
+        }
+        animationFrameRef.current = requestAnimationFrame(processFrame);
+      };
+
+      processFrame();
+
+      setState((prev) => ({ ...prev, isLoading: false }));
+    } catch (err: any) {
+      console.error("FaceMesh init error:", err);
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err?.message || "Camera initialization failed",
+      }));
+    }
+  }, [onResults, videoRef]);
+
   /* -------------------- INIT MEDIAPIPE -------------------- */
 
   useEffect(() => {
     if (!isEnabled) {
-      cameraRef.current?.stop();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (cameraRef.current) {
+        cameraRef.current.getTracks().forEach((track) => track.stop());
+      }
+      faceMeshRef.current?.close?.();
       return;
     }
+  }, [isEnabled]);
 
-    const video = videoRef.current;
-    if (!video) return;
+  /* -------------------- CLEANUP -------------------- */
 
-    const init = async () => {
-      try {
-        setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-        faceMeshRef.current = new FaceMesh({
-          locateFile: (file: string) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-        });
-
-        faceMeshRef.current.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        faceMeshRef.current.onResults(onResults);
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-        });
-        video.srcObject = stream;
-        cameraRef.current = stream;
-
-        await new Promise((resolve) => {
-          video.onloadedmetadata = resolve;
-        });
-
-        const processFrame = async () => {
-          if (faceMeshRef.current && video) {
-            await faceMeshRef.current.send({ image: video });
-          }
-          animationFrameRef.current = requestAnimationFrame(processFrame);
-        };
-
-        processFrame();
-
-        setState((prev) => ({ ...prev, isLoading: false }));
-      } catch (err: any) {
-        console.error("FaceMesh init error:", err);
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: err?.message || "Camera initialization failed",
-        }));
-      }
-    };
-
-    init();
-
+  useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -192,9 +202,9 @@ export function useFaceDetection({
       }
       faceMeshRef.current?.close?.();
     };
-  }, [isEnabled, onResults, videoRef]);
+  }, []);
 
-  return state;
+  return { ...state, startCamera };
 }
 
 /* -------------------- DRAWING -------------------- */

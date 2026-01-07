@@ -118,6 +118,7 @@ const Index = () => {
                 faceDetected={faceDetected}
                 eyesClosed={eyesClosed}
                 isEnabled={isDetectionEnabled}
+                onEnableCamera={handleEnableCamera}
               />
 
               <EyeStatus

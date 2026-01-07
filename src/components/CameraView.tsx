@@ -20,6 +20,7 @@ export function CameraView({
   faceDetected,
   eyesClosed,
   isEnabled,
+  onEnableCamera,
 }: CameraViewProps) {
   return (
     <div className="relative">
