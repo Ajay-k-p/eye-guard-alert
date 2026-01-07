@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { FaceMesh } from "@mediapipe/face_mesh";
 
 import { calculateAverageEAR, areEyesClosed } from "@/utils/eyeAspectRatio";
 
@@ -126,16 +127,25 @@ export function useFaceDetection({
 
   const startCamera = useCallback(async () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.error("Video element not found");
+      return;
+    }
 
     try {
+      console.log("Starting camera initialization...");
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+      console.log("Creating FaceMesh...");
       faceMeshRef.current = new FaceMesh({
-        locateFile: (file: string) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+        locateFile: (file: string) => {
+          const url = `/${file}`;
+          console.log("Loading file:", file, "from:", url);
+          return url;
+        },
       });
 
+      console.log("Setting FaceMesh options...");
       faceMeshRef.current.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
@@ -143,18 +153,26 @@ export function useFaceDetection({
         minTrackingConfidence: 0.5,
       });
 
+      console.log("Setting onResults callback...");
       faceMeshRef.current.onResults(onResults);
 
+      console.log("Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: "user" },
       });
+      console.log("Camera access granted");
       video.srcObject = stream;
       cameraRef.current = stream;
 
+      console.log("Waiting for video metadata...");
       await new Promise((resolve) => {
-        video.onloadedmetadata = resolve;
+        video.onloadedmetadata = () => {
+          console.log("Video metadata loaded");
+          resolve(void 0);
+        };
       });
 
+      console.log("Starting frame processing...");
       const processFrame = async () => {
         if (faceMeshRef.current && video) {
           await faceMeshRef.current.send({ image: video });
@@ -164,6 +182,7 @@ export function useFaceDetection({
 
       processFrame();
 
+      console.log("Camera initialization complete");
       setState((prev) => ({ ...prev, isLoading: false }));
     } catch (err: any) {
       console.error("FaceMesh init error:", err);

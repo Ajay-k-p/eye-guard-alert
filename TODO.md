@@ -1,24 +1,16 @@
-# MediaPipe Vercel Fixes
+# MediaPipe Vercel Deployment Fix
 
-## Changes Made
-- [x] Removed MediaPipe Camera class import and dependency
-- [x] Replaced MediaPipe Camera with native getUserMedia API
-- [x] Updated camera initialization to use navigator.mediaDevices.getUserMedia
-- [x] Implemented manual frame processing loop using requestAnimationFrame
-- [x] Updated cleanup logic to properly stop camera tracks
-- [x] Removed @mediapipe/camera_utils from package.json
-- [x] Fixed FaceMesh to use CDN paths with locateFile for Vercel compatibility
-- [x] Created vercel.json with camera permissions policy
-- [x] Ensured user gesture before camera start (button click in CameraView)
+## Completed Tasks
+- [x] Analyzed the MediaPipe initialization issue on Vercel
+- [x] Identified that WASM files were being loaded from CDN instead of local files
+- [x] Updated locateFile function in useFaceDetection.ts to use local WASM files (/face_mesh_solution_simd_wasm_bin.js and /face_mesh_solution_simd_wasm_bin.wasm)
+- [x] Updated TODO.md to reflect the changes
 
-## Testing Required
-- [x] Test camera access locally
-- [ ] Deploy to Vercel and test camera access
-- [ ] Verify face detection still works properly
-- [x] Check for any console errors
+## Next Steps
+- [ ] Deploy the changes to Vercel
+- [ ] Test camera initialization on the deployed version
+- [ ] Verify that face detection works properly
+- [ ] Check browser console for any errors
 
-## Notes
-- The native getUserMedia API should work better on Vercel than MediaPipe's Camera class
-- HTTPS requirement for camera access is satisfied by Vercel's deployment
-- Frame processing is now handled manually instead of through MediaPipe's Camera onFrame callback
-- FaceMesh now uses CDN paths to avoid local file loading issues on Vercel
+## Summary of Fix
+The issue was that MediaPipe FaceMesh was trying to load WASM files from a CDN URL, which may be blocked or failing on Vercel. By changing the locateFile function to point to the local WASM files in the public directory, the initialization should now work properly on Vercel.

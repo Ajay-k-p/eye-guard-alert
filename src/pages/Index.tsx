@@ -27,10 +27,6 @@ const Index = () => {
   
   const { startAlarm, stopAlarm, testAlarm, isPlaying: isAlarmPlaying, isUnlocked } = useAlarm();
 
-  const handleEnableCamera = () => {
-    setIsDetectionEnabled(true);
-  };
-
   // Face detection
   const {
     isLoading,
@@ -40,12 +36,22 @@ const Index = () => {
     rightEAR,
     averageEAR,
     faceDetected,
+    startCamera,
   } = useFaceDetection({
     videoRef,
     canvasRef,
     earThreshold,
     isEnabled: isDetectionEnabled,
   });
+
+  const handleEnableCamera = async () => {
+    try {
+      await startCamera();
+      setIsDetectionEnabled(true);
+    } catch (err) {
+      console.error('Failed to start camera:', err);
+    }
+  };
 
   // Session timer
   useEffect(() => {
